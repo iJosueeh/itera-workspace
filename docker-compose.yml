@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Frontend - Angular
+  # ==========================================
+  frontend:
+    container_name: itera-frontend
+    build:
+      context: ./itera-angular
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    environment:
+      - API_URL=http://localhost:8080
+      - PYTHON_API_URL=http://localhost:8000
+    depends_on:
+      - backend-scala
+      - backend-python
+    networks:
+      - itera-network
+    stdin_open: true
+    tty: true
+
+  # ==========================================
+  # Backend - Scala/Play Framework
+  # ==========================================
+  backend-scala:
+    container_name: itera-backend-scala
+    build:
+      context: ./Itera
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - JAVA_OPTS=-Dplay.server.provider=play.core.server.NettyServerProvider
+      - PYTHON_API_URL=http://backend-python:8000
+      - PROLOG_URL=http://prolog:9000
+    depends_on:
+      - backend-python
+      - prolog
+    networks:
+      - itera-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ==========================================
+  # Backend - Python/FastAPI
+  # ==========================================
+  backend-python:
+    container_name: itera-backend-python
+    build:
+      context: ./Itera-python
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHON_ENV=development
+      - PROLOG_URL=http://prolog:9000
+    depends_on:
+      - prolog
+    networks:
+      - itera-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Prolog - Motor de Lógica
+  # ==========================================
+  prolog:
+    container_name: itera-prolog
+    build:
+      context: ./itera-prolog
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    networks:
+      - itera-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  itera-network:
+    driver: bridge
+
+# ==========================================
+# Volúmenes opcionales para desarrollo
+# ==========================================
+volumes:
+  scala-build:
+  python-cache:
+  prolog-data:
