@@ -1,0 +1,9 @@
+[submodule "itera-angular"]
+	path = itera-angular
+	url = https://github.com/iJosueeh/itera-angular
+[submodule "Itera-python"]
+	path = Itera-python
+	url = https://github.com/KennySth/Itera-python
+[submodule "Itera"]
+	path = Itera
+	url = https://github.com/Kaiilo1020/Itera
