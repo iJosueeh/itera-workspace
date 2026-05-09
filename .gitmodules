@@ -7,3 +7,6 @@
 [submodule "Itera"]
 	path = Itera
 	url = https://github.com/Kaiilo1020/Itera
+[submodule "itera-prolog"]
+	path = itera-prolog
+	url = https://github.com/kath144/itera-prolog
