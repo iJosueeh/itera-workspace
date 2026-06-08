@@ -2,6 +2,47 @@ version: '3.8'
 
 services:
   # ==========================================
+  # API Gateway - Traefik
+  # ==========================================
+  traefik:
+    image: traefik:v2.10
+    container_name: itera-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:${TRAEFIK_ENTRYPOINT_PORT:-80}"
+    ports:
+      - "${TRAEFIK_ENTRYPOINT_PORT:-80}:${TRAEFIK_ENTRYPOINT_PORT:-80}"
+      - "${TRAEFIK_DASHBOARD_PORT:-8081}:8080" # Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - itera-network
+
+  # ==========================================
+  # Database - PostgreSQL
+  # ==========================================
+  db:
+    image: postgres:15-alpine
+    container_name: itera-db
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - itera-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
   # Frontend - Angular
   # ==========================================
   frontend:
@@ -9,82 +50,107 @@ services:
     build:
       context: ./itera-angular
       dockerfile: Dockerfile
-    ports:
-      - "4200:4200"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=${ANGULAR_PORT:-4200}"
     environment:
-      - API_URL=http://localhost:8080
-      - PYTHON_API_URL=http://localhost:8000
+      - API_URL=${API_GATEWAY_URL}
     depends_on:
       - backend-scala
-      - backend-python
     networks:
       - itera-network
     stdin_open: true
     tty: true
 
   # ==========================================
-  # Backend - Scala/Play Framework
+  # Backend - Scala (Core)
   # ==========================================
   backend-scala:
     container_name: itera-backend-scala
     build:
       context: ./Itera
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-scala.rule=PathPrefix(`/api/core`) || PathPrefix(`/health`)"
+      - "traefik.http.routers.backend-scala.entrypoints=web"
+      - "traefik.http.services.backend-scala.loadbalancer.server.port=${SCALA_PORT:-8080}"
     environment:
       - JAVA_OPTS=-Dplay.server.provider=play.core.server.NettyServerProvider
-      - PYTHON_API_URL=http://backend-python:8000
-      - PROLOG_URL=http://prolog:9000
+      - DB_URL=${DB_URL}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - IA_API_URL=${IA_API_URL}
+      - LOGICA_API_URL=${LOGICA_API_URL}
     depends_on:
-      - backend-python
-      - prolog
+      db:
+        condition: service_healthy
+      backend-python:
+        condition: service_started
+      prolog:
+        condition: service_started
     networks:
       - itera-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${SCALA_PORT:-8080}/health"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
 
   # ==========================================
-  # Backend - Python/FastAPI
+  # Backend - Python (IA)
   # ==========================================
   backend-python:
     container_name: itera-backend-python
     build:
       context: ./Itera-python
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-python.rule=PathPrefix(`/api/ia`)"
+      - "traefik.http.routers.backend-python.entrypoints=web"
+      - "traefik.http.services.backend-python.loadbalancer.server.port=${PYTHON_PORT:-8000}"
+      - "traefik.http.middlewares.ia-strip.stripprefix.prefixes=/api/ia"
+      - "traefik.http.routers.backend-python.middlewares=ia-strip"
     environment:
-      - PYTHON_ENV=development
-      - PROLOG_URL=http://prolog:9000
+      - PYTHON_ENV=${PYTHON_ENV:-development}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - LOGICA_API_URL=${LOGICA_API_URL}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
-      - prolog
+      db:
+        condition: service_healthy
     networks:
       - itera-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PYTHON_PORT:-8000}/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # ==========================================
-  # Prolog - Motor de Lógica
+  # Prolog (Logica)
   # ==========================================
   prolog:
     container_name: itera-prolog
     build:
       context: ./itera-prolog
       dockerfile: Dockerfile
-    ports:
-      - "9000:9000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prolog.rule=PathPrefix(`/api/logica`)"
+      - "traefik.http.routers.prolog.entrypoints=web"
+      - "traefik.http.services.prolog.loadbalancer.server.port=${PROLOG_PORT:-9000}"
+      - "traefik.http.middlewares.logica-strip.stripprefix.prefixes=/api/logica"
+      - "traefik.http.routers.prolog.middlewares=logica-strip"
     networks:
       - itera-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PROLOG_PORT:-9000}/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,10 +159,8 @@ networks:
   itera-network:
     driver: bridge
 
-# ==========================================
-# Volúmenes opcionales para desarrollo
-# ==========================================
 volumes:
+  postgres_data:
   scala-build:
   python-cache:
   prolog-data:
