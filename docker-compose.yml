@@ -126,10 +126,10 @@ services:
       dockerfile: Dockerfile
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prolog.rule=PathPrefix(`/api/logica`)"
+      - "traefik.http.routers.prolog.rule=PathPrefix(`/api/logic`)"
       - "traefik.http.routers.prolog.entrypoints=web"
       - "traefik.http.services.prolog.loadbalancer.server.port=${PROLOG_PORT:-9000}"
-      - "traefik.http.middlewares.logica-strip.stripprefix.prefixes=/api/logica"
+      - "traefik.http.middlewares.logica-strip.stripprefix.prefixes=/api/logic"
       - "traefik.http.routers.prolog.middlewares=logica-strip"
     networks:
       - itera-network
