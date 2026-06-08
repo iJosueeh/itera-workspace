@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   # ==========================================
   # API Gateway - Traefik
   # ==========================================
@@ -14,33 +15,11 @@ services:
       - "--entrypoints.web.address=:${TRAEFIK_ENTRYPOINT_PORT:-80}"
     ports:
       - "${TRAEFIK_ENTRYPOINT_PORT:-80}:${TRAEFIK_ENTRYPOINT_PORT:-80}"
-      - "${TRAEFIK_DASHBOARD_PORT:-8081}:8080" # Dashboard
+      - "${TRAEFIK_DASHBOARD_PORT:-8081}:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - itera-network
-
-  # ==========================================
-  # Database - PostgreSQL
-  # ==========================================
-  db:
-    image: postgres:15-alpine
-    container_name: itera-db
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - itera-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ==========================================
   # Frontend - Angular
@@ -65,7 +44,7 @@ services:
     tty: true
 
   # ==========================================
-  # Backend - Scala (Core)
+  # Backend Scala - Play Framework
   # ==========================================
   backend-scala:
     container_name: itera-backend-scala
@@ -77,21 +56,24 @@ services:
       - "traefik.http.routers.backend-scala.rule=PathPrefix(`/api/core`) || PathPrefix(`/health`)"
       - "traefik.http.routers.backend-scala.entrypoints=web"
       - "traefik.http.services.backend-scala.loadbalancer.server.port=${SCALA_PORT:-8080}"
+    ports:
+      - "${SCALA_PORT:-8080}:8080"
     environment:
-      - JAVA_OPTS=-Dplay.server.provider=play.core.server.NettyServerProvider
+      # Play Framework
+      - PLAY_SECRET_KEY=${PLAY_SECRET_KEY}
+
+      # Neon PostgreSQL
       - DB_URL=${DB_URL}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # Integraciones
       - JWT_SECRET=${JWT_SECRET}
-      - IA_API_URL=${IA_API_URL}
-      - LOGICA_API_URL=${LOGICA_API_URL}
+      - IA_API_URL=http://backend-python:8000
+      - LOGICA_API_URL=http://prolog:9000
     depends_on:
-      db:
-        condition: service_healthy
-      backend-python:
-        condition: service_started
-      prolog:
-        condition: service_started
+      - backend-python
+      - prolog
     networks:
       - itera-network
     healthcheck:
@@ -102,7 +84,7 @@ services:
       start_period: 20s
 
   # ==========================================
-  # Backend - Python (IA)
+  # Backend Python - FastAPI + MongoDB
   # ==========================================
   backend-python:
     container_name: itera-backend-python
@@ -118,12 +100,14 @@ services:
       - "traefik.http.routers.backend-python.middlewares=ia-strip"
     environment:
       - PYTHON_ENV=${PYTHON_ENV:-development}
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      - LOGICA_API_URL=${LOGICA_API_URL}
+
+      # MongoDB Atlas
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+
+      # Integraciones
       - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      db:
-        condition: service_healthy
+      - LOGICA_API_URL=http://prolog:9000
     networks:
       - itera-network
     healthcheck:
@@ -133,7 +117,7 @@ services:
       retries: 5
 
   # ==========================================
-  # Prolog (Logica)
+  # Prolog
   # ==========================================
   prolog:
     container_name: itera-prolog
@@ -160,7 +144,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   scala-build:
   python-cache:
   prolog-data:
