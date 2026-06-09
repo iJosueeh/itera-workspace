@@ -51,6 +51,8 @@ services:
     build:
       context: ./Itera
       dockerfile: Dockerfile
+    env_file:
+      - .env
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend-scala.rule=PathPrefix(`/api/core`) || PathPrefix(`/health`)"
@@ -58,19 +60,6 @@ services:
       - "traefik.http.services.backend-scala.loadbalancer.server.port=${SCALA_PORT:-8080}"
     ports:
       - "${SCALA_PORT:-8080}:8080"
-    environment:
-      # Play Framework
-      - PLAY_SECRET_KEY=${PLAY_SECRET_KEY}
-
-      # Neon PostgreSQL
-      - DB_URL=${DB_URL}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-
-      # Integraciones
-      - JWT_SECRET=${JWT_SECRET}
-      - IA_API_URL=http://backend-python:8000
-      - LOGICA_API_URL=http://prolog:9000
     depends_on:
       - backend-python
       - prolog
@@ -91,6 +80,10 @@ services:
     build:
       context: ./Itera-python
       dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend-python.rule=PathPrefix(`/api/ia`)"
@@ -98,16 +91,6 @@ services:
       - "traefik.http.services.backend-python.loadbalancer.server.port=${PYTHON_PORT:-8000}"
       - "traefik.http.middlewares.ia-strip.stripprefix.prefixes=/api/ia"
       - "traefik.http.routers.backend-python.middlewares=ia-strip"
-    environment:
-      - PYTHON_ENV=${PYTHON_ENV:-development}
-
-      # MongoDB Atlas
-      - MONGODB_URI=${MONGODB_URI}
-      - MONGODB_DATABASE=${MONGODB_DATABASE}
-
-      # Integraciones
-      - JWT_SECRET=${JWT_SECRET}
-      - LOGICA_API_URL=http://prolog:9000
     networks:
       - itera-network
     healthcheck:
@@ -124,6 +107,8 @@ services:
     build:
       context: ./itera-prolog
       dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prolog.rule=PathPrefix(`/api/logic`)"
