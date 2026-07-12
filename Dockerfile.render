@@ -22,9 +22,9 @@ RUN sbt compile stage
 # ---- Stage 2: Final Runtime ----
 FROM python:3.11-slim
 
-# Install SWI-Prolog from Debian repos + system deps
+# Install SWI-Prolog (no X) + curl
 RUN apt-get update && apt-get install -y \
-    swi-prolog \
+    swi-prolog-nox \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
