@@ -22,11 +22,14 @@ RUN sbt compile stage
 # ---- Stage 2: Final Runtime ----
 FROM python:3.11-slim
 
-# Install SWI-Prolog (no X) + curl
+# Install SWI-Prolog (no X) + JRE 17 (for Scala) + curl
 RUN apt-get update && apt-get install -y \
     swi-prolog-nox \
+    openjdk-17-jre-headless \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 # Copy Scala runtime
 WORKDIR /opt/scala
