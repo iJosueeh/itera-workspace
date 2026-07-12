@@ -6,28 +6,33 @@ echo "  ITERA - Combined Backend Starting"
 echo "  Python :$PORT | Scala :8080 | Prolog :9001"
 echo "=========================================="
 
+# ---- Start Python FastAPI FIRST (foreground) ----
+# Render sets PORT env var; Python must bind to it so Render sees it first
+PYTHON_PORT=${PORT:-${PYTHON_PORT:-8000}}
+echo "[1/3] Starting Python FastAPI on port ${PYTHON_PORT}..."
+cd /opt/python
+uvicorn main:app \
+    --host 0.0.0.0 \
+    --port ${PYTHON_PORT} \
+    --workers 1 \
+    --log-level info &
+PYTHON_PID=$!
+sleep 3
+
 # ---- Start Prolog (background) ----
-echo "[1/3] Starting Prolog server on port ${PROLOG_PORT:-9001}..."
+echo "[2/3] Starting Prolog server on port ${PROLOG_PORT:-9001}..."
 cd /opt/prolog
 swipl -f src/server.pl &
 PROLOG_PID=$!
 sleep 3
 
 # ---- Start Scala (background) ----
-echo "[2/3] Starting Scala server on port ${SCALA_PORT:-8080}..."
+echo "[3/3] Starting Scala server on port ${SCALA_PORT:-8080}..."
 cd /opt/scala
 rm -f RUNNING_PID
 ./bin/itera -Dhttp.port=${SCALA_PORT:-8080} -Dhttp.address=127.0.0.1 &
 SCALA_PID=$!
 sleep 5
 
-# ---- Start Python FastAPI (foreground - Render monitors this) ----
-# Render sets PORT env var; we must bind to it for the health check
-PYTHON_PORT=${PORT:-${PYTHON_PORT:-8000}}
-echo "[3/3] Starting Python FastAPI on port ${PYTHON_PORT}..."
-cd /opt/python
-exec uvicorn main:app \
-    --host 0.0.0.0 \
-    --port ${PYTHON_PORT} \
-    --workers 1 \
-    --log-level info
+# Wait for any of them to exit
+wait -n
