@@ -7,19 +7,19 @@
   "rewrites": [
     {
       "source": "/api/core/:path*",
-      "destination": "https://itera-backend-ytoy.onrender.com/api/core/:path*"
+      "destination": "https://itera-backend-rkat.onrender.com/api/core/:path*"
     },
     {
       "source": "/api/ia/:path*",
-      "destination": "https://itera-backend-ytoy.onrender.com/api/ia/:path*"
+      "destination": "https://itera-backend-rkat.onrender.com/api/ia/:path*"
     },
     {
       "source": "/api/logic/:path*",
-      "destination": "https://itera-backend-ytoy.onrender.com/api/logic/:path*"
+      "destination": "https://itera-backend-rkat.onrender.com/api/logic/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://itera-backend-ytoy.onrender.com/health"
+      "destination": "https://itera-backend-rkat.onrender.com/health"
     }
   ],
   "headers": [
@@ -33,6 +33,6 @@
     }
   ],
   "env": {
-    "API_GATEWAY_URL": "https://itera-backend-ytoy.onrender.com"
+    "API_GATEWAY_URL": "https://itera-backend-rkat.onrender.com"
   }
 }
