@@ -13,11 +13,6 @@ swipl -f src/server.pl &
 PROLOG_PID=$!
 sleep 3
 
-# Check if Prolog is still running
-if ! kill -0 $PROLOG_PID 2>/dev/null; then
-    echo "⚠️  Prolog exited, continuing without it..."
-fi
-
 # ---- Start Scala (background) ----
 echo "[2/3] Starting Scala server on port ${SCALA_PORT:-8080}..."
 cd /opt/scala
@@ -26,16 +21,13 @@ rm -f RUNNING_PID
 SCALA_PID=$!
 sleep 5
 
-# Check if Scala is still running
-if ! kill -0 $SCALA_PID 2>/dev/null; then
-    echo "⚠️  Scala exited, continuing without it..."
-fi
-
 # ---- Start Python FastAPI (foreground - Render monitors this) ----
-echo "[3/3] Starting Python FastAPI on port ${PYTHON_PORT:-8000}..."
+# Render sets PORT env var; we must bind to it for the health check
+PYTHON_PORT=${PORT:-${PYTHON_PORT:-8000}}
+echo "[3/3] Starting Python FastAPI on port ${PYTHON_PORT}..."
 cd /opt/python
 exec uvicorn main:app \
     --host 0.0.0.0 \
-    --port ${PYTHON_PORT:-8000} \
+    --port ${PYTHON_PORT} \
     --workers 1 \
     --log-level info
