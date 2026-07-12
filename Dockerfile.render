@@ -22,13 +22,11 @@ RUN sbt compile stage
 # ---- Stage 2: Final Runtime ----
 FROM python:3.11-slim
 
-# Install SWI-Prolog + system deps
+# Install SWI-Prolog from Debian repos + system deps
 RUN apt-get update && apt-get install -y \
-    software-properties-common gnupg curl && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7B2F481E08A80FC6 && \
-    echo "deb http://ppa.launchpad.net/swi-prolog/stable/ubuntu jammy main" > /etc/apt/sources.list.d/swi-prolog.list && \
-    apt-get update && apt-get install -y swi-prolog && \
-    rm -rf /var/lib/apt/lists/*
+    swi-prolog \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy Scala runtime
 WORKDIR /opt/scala
