@@ -1,0 +1,44 @@
+services:
+  # ==========================================
+  # Backend Combinado (Python + Scala + Prolog)
+  # ==========================================
+  - type: web
+    name: itera-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SCALA_PORT
+        value: 8080
+      - key: PYTHON_PORT
+        value: 8000
+      - key: PROLOG_PORT
+        value: 9000
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: itera-python
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PLAY_SECRET_KEY
+        generateValue: true
+      - key: PYTHON_ENV
+        value: production
+      - key: SCALA_ENV
+        value: production
+
+  # ==========================================
+  # PostgreSQL (Managed Database)
+  # ==========================================
+  - type: pgsql
+    name: itera-db
+    plan: free
+    database: itera_scala_db
+    user: itera_user

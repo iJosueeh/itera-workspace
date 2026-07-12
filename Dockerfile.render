@@ -1,0 +1,54 @@
+# ==========================================
+# ITERA - Combined Backend (Render Deploy)
+# Python FastAPI + Scala Play + SWI-Prolog
+# ==========================================
+
+# ---- Stage 1: Build Scala ----
+FROM eclipse-temurin:17-jdk AS scala-builder
+WORKDIR /scala-build
+
+# Install sbt
+RUN apt-get update && apt-get install -y curl gnupg && \
+    curl -fL https://github.com/sbt/sbt/releases/download/v1.10.0/sbt-1.10.0.tgz | tar xz -C /usr/local && \
+    ln -s /usr/local/sbt/bin/sbt /usr/local/bin/sbt && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY Itera/build.sbt .
+COPY Itera/project project
+RUN sbt update
+COPY Itera/ .
+RUN sbt compile stage
+
+# ---- Stage 2: Final Runtime ----
+FROM python:3.11-slim
+
+# Install SWI-Prolog + system deps
+RUN apt-get update && apt-get install -y \
+    software-properties-common gnupg curl && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7B2F481E08A80FC6 && \
+    echo "deb http://ppa.launchpad.net/swi-prolog/stable/ubuntu jammy main" > /etc/apt/sources.list.d/swi-prolog.list && \
+    apt-get update && apt-get install -y swi-prolog && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy Scala runtime
+WORKDIR /opt/scala
+COPY --from=scala-builder /scala-build/target/universal/stage/ .
+
+# Copy Prolog
+WORKDIR /opt/prolog
+COPY itera-prolog/ .
+
+# Copy Python FastAPI
+WORKDIR /opt/python
+COPY Itera-python/ .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy startup script
+COPY start-all.sh /start-all.sh
+RUN chmod +x /start-all.sh
+
+WORKDIR /app
+
+EXPOSE 8080 8000 9000
+
+CMD ["/start-all.sh"]
