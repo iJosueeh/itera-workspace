@@ -113,18 +113,18 @@ services:
       context: ./itera-prolog
       dockerfile: Dockerfile
     ports:
-      - "9000:9000"
+      - "${PROLOG_PORT:-9001}:${PROLOG_PORT:-9001}"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prolog.rule=PathPrefix(`/api/logic`)"
       - "traefik.http.routers.prolog.entrypoints=web"
-      - "traefik.http.services.prolog.loadbalancer.server.port=${PROLOG_PORT:-9000}"
+      - "traefik.http.services.prolog.loadbalancer.server.port=${PROLOG_PORT:-9001}"
       - "traefik.http.middlewares.logica-strip.stripprefix.prefixes=/api/logic"
       - "traefik.http.routers.prolog.middlewares=logica-strip"
     networks:
       - itera-network
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${PROLOG_PORT:-9001}/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
