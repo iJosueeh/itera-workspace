@@ -3,11 +3,11 @@ set -e
 
 echo "=========================================="
 echo "  ITERA - Combined Backend Starting"
-echo "  Python :8000 | Scala :8080 | Prolog :9000"
+echo "  Python :$PORT | Scala :8080 | Prolog :9001"
 echo "=========================================="
 
 # ---- Start Prolog (background) ----
-echo "[1/3] Starting Prolog server on port ${PROLOG_PORT:-9000}..."
+echo "[1/3] Starting Prolog server on port ${PROLOG_PORT:-9001}..."
 cd /opt/prolog
 swipl -f src/server.pl &
 PROLOG_PID=$!
