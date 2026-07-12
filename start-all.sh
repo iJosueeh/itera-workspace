@@ -17,7 +17,7 @@ sleep 3
 echo "[2/3] Starting Scala server on port ${SCALA_PORT:-8080}..."
 cd /opt/scala
 rm -f RUNNING_PID
-./bin/itera -Dhttp.port=${SCALA_PORT:-8080} -Dhttp.address=0.0.0.0 &
+./bin/itera -Dhttp.port=${SCALA_PORT:-8080} -Dhttp.address=127.0.0.1 &
 SCALA_PID=$!
 sleep 5
 
