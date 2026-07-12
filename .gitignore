@@ -56,6 +56,12 @@ coverage.xml
 .docker-compose.override.yml
 postgres_data/
 
+# Vercel
+.vercel/
+
+# Render
+.render/
+
 # OS specific
 .DS_Store
 .DS_Store?
@@ -64,3 +70,4 @@ postgres_data/
 .Trashes
 ehthumbs.db
 Icon?
+.vercel
